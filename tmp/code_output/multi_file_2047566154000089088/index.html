@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务记录网站</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>任务记录</h1>
+    </header>
+    <main>
+        <section id="task-input">
+            <form id="task-form">
+                <input type="text" id="task-input-field" placeholder="输入新任务..." required>
+                <button type="submit">添加任务</button>
+            </form>
+        </section>
+        <section id="task-list">
+            <h2>任务列表</h2>
+            <ul id="tasks"></ul>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>

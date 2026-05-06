@@ -1,12 +1,18 @@
 spring:
   application:
     name: ai-coder
+  sa-token:
+    token-name: satoken        # token 名称
+    timeout: 2592000            # 有效期，单位秒，默认30天
+    is-read-head: true          # 允许从 header 读取 token
   # mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://1.15.35.203:13306/ai-coder
     username: root
     password: 3r2ZShXsDNY5Nhkk
+  profiles:
+    active: local
 server:
   port: 8123
   servlet:
@@ -21,4 +27,5 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
 

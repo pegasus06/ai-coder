@@ -1,4 +1,4 @@
-package com.ruizhou.aicoder.ai;
+package com.ruizhou.aicoder.ai.service;
 
 import com.ruizhou.aicoder.ai.model.HtmlCodeResult;
 import com.ruizhou.aicoder.ai.model.MultiFileCodeResult;
@@ -23,4 +23,5 @@ public interface AiCodeGeneratorService {
      */
     @SystemMessage(fromResource = "prompt/codegen-multi-file-system-prompt.txt")
     MultiFileCodeResult generateMultiFileCode(String userMessage);
+
 }

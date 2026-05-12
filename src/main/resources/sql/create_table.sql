@@ -20,3 +20,24 @@ create table if not exists user
     UNIQUE KEY uk_userAccount (userAccount),
     INDEX idx_userName (userName)
     ) comment '用户' collate = utf8mb4_unicode_ci;
+
+-- 应用表
+create table if not exists app
+(
+    id           bigint       not null comment 'id' primary key,
+    appName      varchar(512)                     null comment '应用名称',
+    cover        varchar(1024)                    null comment '应用封面',
+    initPrompt   text                              null comment '初始化 prompt',
+    codeGenType  varchar(64)                      null comment '代码生成类型',
+    deployKey    varchar(256)                     null comment '部署标识',
+    deployedTime datetime                         null comment '部署时间',
+    priority     int          default 0          null comment '优先级',
+    userId       bigint                           not null comment '创建用户 id',
+    editTime     datetime     default CURRENT_TIMESTAMP not null comment '编辑时间',
+    createTime   datetime     default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime   datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete     tinyint      default 0          not null comment '是否删除',
+    INDEX idx_app_userId (userId),
+    INDEX idx_app_appName (appName),
+    INDEX idx_app_priority (priority)
+) comment '应用' collate = utf8mb4_unicode_ci;

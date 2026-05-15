@@ -9,6 +9,7 @@ import com.ruizhou.aicoder.entity.User;
 import com.ruizhou.aicoder.model.dto.app.*;
 import com.ruizhou.aicoder.model.vo.AppVO;
 import jakarta.servlet.http.HttpServletRequest;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -43,4 +44,7 @@ public interface AppService extends IService<App> {
     AppVO getAppVO(App app, boolean includeInitPrompt);
 
     List<AppVO> getAppVoList(List<App> appList);
+
+     Flux<String> chatToGenCode(Long appId, String message, User loginUser);
+
 }

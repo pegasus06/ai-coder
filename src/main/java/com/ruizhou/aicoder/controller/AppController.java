@@ -8,6 +8,7 @@ import com.ruizhou.aicoder.ai.model.enums.CodeGenTypeEnum;
 import com.ruizhou.aicoder.common.BaseResponse;
 import com.ruizhou.aicoder.common.DeleteRequest;
 import com.ruizhou.aicoder.common.ResultUtils;
+import com.ruizhou.aicoder.constant.AppConstant;
 import com.ruizhou.aicoder.constant.UserConstant;
 import com.ruizhou.aicoder.entity.App;
 import com.ruizhou.aicoder.entity.User;
@@ -172,5 +173,20 @@ public class AppController {
         ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
         Page<AppVO> page = appService.listFeaturedAppVoByPage(queryRequest);
         return ResultUtils.success(page);
+    }
+
+    @PostMapping("/good/list/page/vo")
+    public BaseResponse<Page<AppVO>> listGoodAppVoByPage(@RequestBody AppAdminQueryRequest queryRequest) {
+        ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
+        int pageSize = queryRequest.getPageSize();
+        ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR, "每页最多20条");
+        int pageNum = queryRequest.getPageNum();
+        queryRequest.setPriority(AppConstant.DEFAULT_APP_PRIORITY);
+        QueryWrapper adminQueryWrapper = appService.getAdminQueryWrapper(queryRequest);
+        Page<App> page = appService.page(Page.of(pageNum, pageSize), adminQueryWrapper);
+        Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, page.getTotalRow());
+        List<AppVO> appVOList = appService.getAppVoList(page.getRecords());
+        appVOPage.setRecords(appVOList);
+        return ResultUtils.success(appVOPage);
     }
 }

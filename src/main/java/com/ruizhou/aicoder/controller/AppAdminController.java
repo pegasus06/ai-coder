@@ -8,7 +8,6 @@ import com.ruizhou.aicoder.common.DeleteRequest;
 import com.ruizhou.aicoder.common.ResultUtils;
 import com.ruizhou.aicoder.constant.UserConstant;
 import com.ruizhou.aicoder.entity.App;
-import com.ruizhou.aicoder.exception.BusinessException;
 import com.ruizhou.aicoder.exception.ErrorCode;
 import com.ruizhou.aicoder.exception.ThrowUtils;
 import com.ruizhou.aicoder.model.dto.app.AppAdminQueryRequest;

@@ -2,6 +2,8 @@ package com.ruizhou.aicoder.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -21,6 +23,7 @@ import com.ruizhou.aicoder.model.dto.app.*;
 import com.ruizhou.aicoder.model.vo.AppVO;
 import com.ruizhou.aicoder.model.vo.UserVO;
 import com.ruizhou.aicoder.service.AppService;
+import com.ruizhou.aicoder.service.ChatHistoryService;
 import com.ruizhou.aicoder.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,17 +32,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 import reactor.core.publisher.Flux;
 
+import java.io.File;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * 应用 服务层实现。
  *
- * @author <a href="https://github.com/liyupi">ruizhou</a>
  */
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
@@ -47,8 +47,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private static final String DEFAULT_APP_NAME = "未命名应用";
     @Resource
     private UserService userService;
+
     @Resource
-    private AppService appService;
+    private ChatHistoryService chatHistoryService;
+
     @Autowired
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
 
@@ -65,7 +67,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
         // 暂时设置为多文件生成
         app.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
-        boolean save = appService.save(app);
+        boolean save = this.save(app);
         if (!save) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "创建失败");
         }
@@ -91,7 +93,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         patch.setId(req.getId());
         patch.setAppName(req.getAppName());
         patch.setEditTime(LocalDateTime.now());
-        boolean updateById = appService.updateById(patch);
+        boolean updateById = this.updateById(patch);
         ThrowUtils.throwIf(!updateById, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
@@ -156,11 +158,17 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
-    public boolean deleteAppByAdmin(long id) {
+    public boolean deleteApp(long id) {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        chatHistoryService.deleteByAppId(id);
         return this.removeById(id);
+    }
+
+    @Override
+    public boolean deleteAppByAdmin(long id) {
+        return this.deleteApp(id);
     }
 
     @Override
@@ -321,7 +329,51 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
-        // 5. 调用 AI 生成代码
-        return aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        // 5. 保存用户消息
+        chatHistoryService.saveUserMessage(appId, loginUser.getId(), message);
+        // 6. 调用 AI 生成代码并持久化 AI 回复
+        StringBuilder aiResponseBuilder = new StringBuilder();
+        return aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId)
+                .doOnNext(aiResponseBuilder::append)
+                .doOnComplete(() -> chatHistoryService.saveAiMessage(appId, loginUser.getId(), aiResponseBuilder.toString()))
+                .doOnError(error -> chatHistoryService.saveErrorMessage(appId, loginUser.getId(), error.getMessage()));
+    }
+
+    @Override
+    public String deployApp(Long appId, User loginUser) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.PARAMS_ERROR, "用户不能为空");
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        // 验证用户是否有权限访问该应用，仅本人可以部署应用
+        if (!app.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限访问该应用");
+        }
+        // 调用部署服务部署应用
+        String deployKey = app.getDeployKey();
+        if (StrUtil.isBlank(deployKey)) {
+             deployKey = RandomUtil.randomString(6);
+        }
+        String codeGenType = app.getCodeGenType();
+        String sourceDirName = codeGenType + "_" + appId;
+        String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
+        File sourceDir  = new File(sourceDirPath);
+        if (!sourceDir.exists()||!sourceDir.isDirectory()){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "代码生成目录不存在");
+        }
+        String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
+        try {
+            FileUtil.copyContent(sourceDir, new File(deployDirPath),true);
+        }
+        catch (Exception e){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败："+e.getMessage());
+        }
+        App updateApp = new App();
+        updateApp.setId(appId);
+        updateApp.setDeployKey(deployKey);
+        updateApp.setDeployedTime(LocalDateTime.now());
+        boolean updateResult = this.updateById(updateApp);
+        ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
+        return String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
     }
 }

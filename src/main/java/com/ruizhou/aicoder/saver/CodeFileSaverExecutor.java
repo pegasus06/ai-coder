@@ -5,6 +5,7 @@ import com.ruizhou.aicoder.ai.model.MultiFileCodeResult;
 import com.ruizhou.aicoder.ai.model.enums.CodeGenTypeEnum;
 import com.ruizhou.aicoder.exception.BusinessException;
 import com.ruizhou.aicoder.exception.ErrorCode;
+import org.springframework.util.DigestUtils;
 
 import java.io.File;
 
@@ -17,8 +18,7 @@ public class CodeFileSaverExecutor {
     private static final HtmlCodeFileSaverTemplate htmlCodeFileSaver = new HtmlCodeFileSaverTemplate();
 
     private static final MultiFileCodeFileSaverTemplate multiFileCodeFileSaver = new MultiFileCodeFileSaverTemplate();
-
-    /**
+   /**
      * 执行代码保存
      *
      * @param codeResult  代码结果对象

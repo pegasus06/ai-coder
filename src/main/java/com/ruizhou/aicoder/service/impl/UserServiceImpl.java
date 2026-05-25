@@ -1,5 +1,7 @@
 package com.ruizhou.aicoder.service.impl;
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import cn.dev33.satoken.secure.BCrypt;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
@@ -76,8 +78,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public String getEncryptPassword(String userPassword) {
         // 盐值，混淆密码
-        final String SALT = "ruizhou";
-        return DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+        return new BCryptPasswordEncoder().encode(userPassword);
     }
 
     @Override
@@ -102,18 +103,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (userPassword.length() < 8) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码错误");
         }
-        // 2. 加密
-        String encryptPassword = getEncryptPassword(userPassword);
         // 查询用户是否存在
         QueryWrapper queryWrapper = new QueryWrapper();
         queryWrapper.eq("userAccount", userAccount);
-        queryWrapper.eq("userPassword", encryptPassword);
         User user = this.mapper.selectOneByQuery(queryWrapper);
         // 用户不存在
         if (user == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
+// 3. 重点：Bcrypt 密码比对（关键代码）
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        boolean matches = encoder.matches(
+                userPassword,        // 用户输入的明文密码
+                user.getUserPassword() // 数据库里的 Bcrypt 密文
+        );
 
+// 4. 比对失败说明密码错
+        if (!matches) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号或密码错误");
+        }
         // 3. 记录用户的登录态
         request.getSession().setAttribute(USER_LOGIN_STATE, user);
         // 4. 获得脱敏后的用户信息

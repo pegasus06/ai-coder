@@ -6,7 +6,7 @@ import com.ruizhou.aicoder.entity.User;
 /**
  * 用户 映射层。
  *
- * @author <a href="https://github.com/liyupi">ruizhou</a>
+ * @author <a href="https://github.com/">ruizhou</a>
  */
 public interface UserMapper extends BaseMapper<User> {
 

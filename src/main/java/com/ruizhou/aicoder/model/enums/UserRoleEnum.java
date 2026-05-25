@@ -3,6 +3,11 @@ package com.ruizhou.aicoder.model.enums;
 import cn.hutool.core.util.ObjUtil;
 import lombok.Getter;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+
 @Getter
 public enum UserRoleEnum {
 
@@ -18,6 +23,13 @@ public enum UserRoleEnum {
         this.value = value;
     }
 
+    private static final Map<String, UserRoleEnum> Value_Cache;
+
+    static {
+        Value_Cache = Arrays.stream(values()).collect(Collectors.toMap(UserRoleEnum::getValue, e -> e));
+
+    }
+
     /**
      * 根据 value 获取枚举
      *
@@ -28,12 +40,7 @@ public enum UserRoleEnum {
         if (ObjUtil.isEmpty(value)) {
             return null;
         }
-        for (UserRoleEnum anEnum : UserRoleEnum.values()) {
-            if (anEnum.value.equals(value)) {
-                return anEnum;
-            }
-        }
-        return null;
+        return Value_Cache.get(value);
     }
 }
 

@@ -29,6 +29,8 @@ public interface AppService extends IService<App> {
 
     Page<AppVO> listFeaturedAppVoByPage(AppFeaturedQueryRequest queryRequest);
 
+    boolean deleteApp(long id);
+
     boolean deleteAppByAdmin(long id);
 
     boolean updateAppByAdmin(AppAdminUpdateRequest request);
@@ -47,4 +49,5 @@ public interface AppService extends IService<App> {
 
      Flux<String> chatToGenCode(Long appId, String message, User loginUser);
 
+    String deployApp(Long appId, User loginUser);
 }

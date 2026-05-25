@@ -2,6 +2,7 @@ package com.ruizhou.aicoder.controller;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.ruizhou.aicoder.ai.model.enums.CodeGenTypeEnum;
@@ -16,20 +17,22 @@ import com.ruizhou.aicoder.exception.BusinessException;
 import com.ruizhou.aicoder.exception.ErrorCode;
 import com.ruizhou.aicoder.exception.ThrowUtils;
 import com.ruizhou.aicoder.model.dto.app.*;
+import com.ruizhou.aicoder.model.dto.resource.AppDeployRequest;
 import com.ruizhou.aicoder.model.vo.AppVO;
 import com.ruizhou.aicoder.service.AppService;
 import com.ruizhou.aicoder.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.BeanUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 应用（用户端）
@@ -129,7 +132,7 @@ public class AppController {
         if (!oldApp.getUserId().equals(loginUser.getId()) && !UserConstant.userConstant.ADMIN_ROLE.equals(loginUser.getUserRole())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
-        boolean ok = appService.removeById(id);
+        boolean ok = appService.deleteApp(id);
         return ResultUtils.success(ok);
     }
 
@@ -189,4 +192,46 @@ public class AppController {
         appVOPage.setRecords(appVOList);
         return ResultUtils.success(appVOPage);
     }
+
+    @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId,
+                                                       @RequestParam String message,
+                                                       HttpServletRequest request) {
+        // 参数校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
+        ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 调用服务生成代码（流式）
+        Flux<String> chatToGenCode = appService.chatToGenCode(appId, message, loginUser);
+        return chatToGenCode.map(chunk ->
+                {
+                    Map<String, String> stringMap = Map.of("d", chunk);
+                    String jsonStr = JSONUtil.toJsonStr(stringMap);
+                    return ServerSentEvent.<String>builder().data(jsonStr).build();
+                }
+        ).concatWith(
+                Mono.just(ServerSentEvent.<String>builder().event("done").data("").build()
+                ));
+    }
+
+    /**
+     * 应用部署
+     *
+     * @param appDeployRequest 部署请求
+     * @param request          请求
+     * @return 部署 URL
+     */
+    @PostMapping("/deploy")
+    public BaseResponse<String> deployApp(@RequestBody AppDeployRequest appDeployRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(appDeployRequest == null, ErrorCode.PARAMS_ERROR);
+        Long appId = appDeployRequest.getAppId();
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 调用服务部署应用
+        String deployUrl = appService.deployApp(appId, loginUser);
+        return ResultUtils.success(deployUrl);
+    }
+
 }

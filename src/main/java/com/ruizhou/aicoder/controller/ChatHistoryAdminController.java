@@ -1,14 +1,15 @@
 package com.ruizhou.aicoder.controller;
 
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.core.query.QueryWrapper;
 import com.ruizhou.aicoder.annotation.AuthCheck;
 import com.ruizhou.aicoder.common.BaseResponse;
 import com.ruizhou.aicoder.common.ResultUtils;
 import com.ruizhou.aicoder.constant.UserConstant;
+import com.ruizhou.aicoder.entity.ChatHistory;
 import com.ruizhou.aicoder.exception.ErrorCode;
 import com.ruizhou.aicoder.exception.ThrowUtils;
-import com.ruizhou.aicoder.model.dto.chathistory.ChatHistoryAdminQueryRequest;
-import com.ruizhou.aicoder.model.vo.ChatHistoryVO;
+import com.ruizhou.aicoder.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.ruizhou.aicoder.service.ChatHistoryService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,9 +32,13 @@ public class ChatHistoryAdminController {
      */
     @PostMapping("/list/page/vo")
     @AuthCheck(mustRole = UserConstant.userConstant.ADMIN_ROLE)
-    public BaseResponse<Page<ChatHistoryVO>> listChatHistoryVoByPage(@RequestBody ChatHistoryAdminQueryRequest request) {
+    public BaseResponse<Page<ChatHistory>> listChatHistoryVoByPage(@RequestBody ChatHistoryQueryRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
-        Page<ChatHistoryVO> page = chatHistoryService.listChatHistoryVoByPageForAdmin(request);
-        return ResultUtils.success(page);
+        long pageNum = request.getPageNum();
+        long pageSize = request.getPageSize();
+        QueryWrapper queryWrapper = chatHistoryService.getQueryWrapper(request);
+        Page<ChatHistory> chatHistoryPage = chatHistoryService.page(Page.of(pageNum, pageSize), queryWrapper);
+        return ResultUtils.success(chatHistoryPage);
     }
+
 }

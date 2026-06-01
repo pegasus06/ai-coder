@@ -7,9 +7,13 @@ import com.ruizhou.aicoder.entity.ChatHistory;
 import com.ruizhou.aicoder.entity.User;
 import com.ruizhou.aicoder.model.dto.chathistory.ChatHistoryAdminQueryRequest;
 import com.ruizhou.aicoder.model.dto.chathistory.ChatHistoryAppQueryRequest;
+import com.ruizhou.aicoder.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.ruizhou.aicoder.model.vo.ChatHistoryCursorVO;
 import com.ruizhou.aicoder.model.vo.ChatHistoryVO;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import reactor.core.publisher.Flux;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -45,13 +49,20 @@ public interface ChatHistoryService extends IService<ChatHistory> {
     /**
      * 管理员分页查询全部对话历史
      */
-    Page<ChatHistoryVO> listChatHistoryVoByPageForAdmin(ChatHistoryAdminQueryRequest request);
-
-    QueryWrapper getAdminQueryWrapper(ChatHistoryAdminQueryRequest request);
 
     ChatHistoryVO getChatHistoryVO(ChatHistory chatHistory);
 
     List<ChatHistoryVO> getChatHistoryVoList(List<ChatHistory> chatHistoryList);
 
-    List<ChatHistoryVO> getChatHistoryVoListForAdmin(List<ChatHistory> chatHistoryList);
+
+    boolean addChatMessage(Long appId, String message, String messageType, Long userId);
+
+    Flux<String> chatToGen(Long appId, String message, User loginUser);
+
+    QueryWrapper getQueryWrapper(ChatHistoryQueryRequest chatHistoryQueryRequest);
+
+    Page<ChatHistory> listAppChatHistoryByPage(Long appId, int pageSize,
+                                               LocalDateTime lastCreateTime,
+                                               User loginUser);
+    int loadChatHistoryToMemory(Long appId, MessageWindowChatMemory chatMemory, int maxCount);
 }

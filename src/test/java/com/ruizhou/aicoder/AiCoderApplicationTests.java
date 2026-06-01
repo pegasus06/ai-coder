@@ -1,5 +1,6 @@
 package com.ruizhou.aicoder;
 
+import cn.hutool.core.util.StrUtil;
 import com.ruizhou.aicoder.ai.core.CodeParser;
 import com.ruizhou.aicoder.ai.service.AiCodeGeneratorService;
 import com.ruizhou.aicoder.ai.core.AiCodeGeneratorFacade;
@@ -9,6 +10,7 @@ import com.ruizhou.aicoder.ai.model.enums.CodeGenTypeEnum;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.platform.commons.util.StringUtils;
 import org.springframework.boot.test.context.SpringBootTest;
 import reactor.core.publisher.Flux;
 
@@ -30,76 +32,14 @@ class AiCoderApplicationTests {
     @Resource
     private AiCodeGeneratorService aiCodeGeneratorService;
 
+
     @Test
-    void generateHtmlCode() {
-        HtmlCodeResult result = aiCodeGeneratorService.generateHtmlCode("做个程序员鱼皮的工作记录小工具");
+    void generateAndSaveCodeStream() {
+        Flux<String> stringFlux = aiCodeGeneratorFacade.generateAndSaveCodeStream("任务记录网站", CodeGenTypeEnum.VUE_PROJECT, 1L);
+        List<String> result = stringFlux.collectList().block();
         assertNotNull(result);
-    }
-
-    @Test
-    void generateMultiFileCode() {
-        MultiFileCodeResult multiFileCode = aiCodeGeneratorService.generateMultiFileCode("做个程序员鱼皮的留言板");
-        assertNotNull(multiFileCode);
-    }
-
-
-
-    @Test
-    void parseHtmlCode() {
-        String codeContent = """
-                随便写一段描述：
-                html 格式
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>测试页面</title>
-                </head>
-                <body>
-                    <h1>Hello World!</h1>
-                </body>
-                </html>
-                
-                随便写一段描述
-                """;
-        HtmlCodeResult result = CodeParser.parseHtmlCode(codeContent);
-        assertNotNull(result);
-        assertNotNull(result.getHtmlCode());
-    }
-
-    @Test
-    void parseMultiFileCode() {
-        String codeContent = """
-                创建一个完整的网页：
-                html 格式
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>多文件示例</title>
-                    <link rel="stylesheet" href="style.css">
-                </head>
-                <body>
-                    <h1>欢迎使用</h1>
-                    <script src="script.js"></script>
-                </body>
-                </html>
-                
-                css 格式
-                h1 {
-                    color: blue;
-                    text-align: center;
-                }
-                ```
-                ```js
-                console.log('页面加载完成');
-                
-                文件创建完成！
-                """;
-        MultiFileCodeResult result = CodeParser.parseMultiFileCode(codeContent);
-        assertNotNull(result);
-        System.out.println("解析到的HTML：\n" + result.getHtmlCode());
-        assertNotNull(result.getHtmlCode());
-        assertNotNull(result.getCssCode());
-        assertNotNull(result.getJsCode());
+        String join = String.join("", result);
+        assertNotNull(join);
     }
 
 

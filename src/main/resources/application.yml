@@ -1,6 +1,19 @@
 spring:
+  # session 配置
+  session:
+    store-type: redis
+    # session 30 天过期
+    timeout: 2592000
   application:
     name: ai-coder
+  data:
+    #redis
+    redis:
+      host: 1.15.35.203
+      port: 26739
+      password: mypass123
+      ttl: 3600
+      user-name: myuser
   sa-token:
     token-name: satoken        # token 名称
     timeout: 2592000            # 有效期，单位秒，默认30天
@@ -14,6 +27,10 @@ spring:
   profiles:
     active: local
 server:
+  # cookie 30 天过期
+  session:
+    cookie:
+      max-age: 2592000
   port: 8123
   servlet:
     context-path: /api

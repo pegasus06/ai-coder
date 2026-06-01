@@ -27,20 +27,22 @@ import com.ruizhou.aicoder.service.ChatHistoryService;
 import com.ruizhou.aicoder.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * 应用 服务层实现。
- *
  */
+@Slf4j
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
 
@@ -352,21 +354,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 调用部署服务部署应用
         String deployKey = app.getDeployKey();
         if (StrUtil.isBlank(deployKey)) {
-             deployKey = RandomUtil.randomString(6);
+            deployKey = RandomUtil.randomString(6);
         }
         String codeGenType = app.getCodeGenType();
         String sourceDirName = codeGenType + "_" + appId;
         String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
-        File sourceDir  = new File(sourceDirPath);
-        if (!sourceDir.exists()||!sourceDir.isDirectory()){
+        File sourceDir = new File(sourceDirPath);
+        if (!sourceDir.exists() || !sourceDir.isDirectory()) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "代码生成目录不存在");
         }
         String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
         try {
-            FileUtil.copyContent(sourceDir, new File(deployDirPath),true);
-        }
-        catch (Exception e){
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败："+e.getMessage());
+            FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败：" + e.getMessage());
         }
         App updateApp = new App();
         updateApp.setId(appId);
@@ -376,4 +377,32 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
         return String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
     }
+
+    /**
+     * 删除应用时关联删除对话历史
+     *
+     * @param id 应用ID
+     * @return 是否成功
+     */
+    @Override
+    public boolean removeById(Serializable id) {
+        if (id == null) {
+            return false;
+        }
+        // 转换为 Long 类型
+        Long appId = Long.valueOf(id.toString());
+        if (appId <= 0) {
+            return false;
+        }
+        // 先删除关联的对话历史
+        try {
+            chatHistoryService.deleteByAppId(appId);
+        } catch (Exception e) {
+            // 记录日志但不阻止应用删除
+            log.error("删除应用关联对话历史失败: {}", e.getMessage());
+        }
+        // 删除应用
+        return super.removeById(id);
+    }
+
 }
